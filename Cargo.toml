@@ -1,0 +1,12 @@
+[package]
+name = "sht40-rjw"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+embedded-hal = "1.0.0"
+
+[dev-dependencies]
+anyhow = "1.0.97"
+embedded-hal-mock = "0.11.1"
+mcp2221 = { version = "0.1.1", path = "../mcp2221-rs-rjw" }
