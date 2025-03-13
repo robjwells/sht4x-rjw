@@ -7,15 +7,11 @@ fn mcp() -> anyhow::Result<()> {
     let di = dev.get_device_info()?;
     println!("{}", di);
 
-    let config = sht40_rjw::Config {
-        validate_crc: false,
-        ..sht40_rjw::Config::default()
-    };
-    let mut sensor = sht40_rjw::SHT40::new(dev, config);
+    let mut sensor = sht40_rjw::SHT40::new(dev, Default::default());
 
-    println!("Serial number: {}", sensor.serial_number());
+    println!("Serial number: {}", sensor.serial_number()?);
 
-    let measurement = sensor.measure(StdSleep::new());
+    let measurement = sensor.measure(StdSleep::new())?;
     println!(
         "{}°C\t{} %RH",
         measurement.temperature, measurement.humidity
