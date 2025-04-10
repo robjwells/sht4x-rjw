@@ -24,15 +24,41 @@ pub enum HeaterDuration {
 }
 
 #[derive(Clone, Copy)]
+/// Level of accuracy with which to read the sensor.
+///
+/// ## Precision
+///
+/// The values given for each precision mode are three times the
+/// standard deviation of multiple consecutive measurement values
+/// at constant conditions and are a measure for the noise on the
+/// physical sensor output. (Paraphrasing slightly from p4 of the
+/// datasheet.)
+///
+/// ## Heater
+///
+/// The sensor may be pre-heated before taking a reading, to improve
+/// humidity readings in high-humidity environments or when there is
+/// moisture on the sensor (p13 of the datasheet). This measurement
+/// is always taken with the high-repeatability mode.
+///
+/// The heater is designed for a maximum duty cycle of 10%, meaning the
+/// total heater-on-time should not be longer than 10% of the sensor's
+/// lifetime. (p13)
+///
+/// Note that the heater can draw 75mA in its highest power setting.
 pub enum ReadingMode {
+    /// High precision: 0.04°C and 0.08%RH.
     HighPrecision,
+    /// Medium precision: 0.07°C and 0.15%RH.
     MediumPrecision,
+    /// Low precision: 0.1°C and 0.25%RH.
     LowPrecision,
-    /// Apply heat to the sensor before taking a high precision reading.
+    /// Apply heat to the sensor before taking a high-precision reading.
     HighPrecisionWithHeater(HeaterPower, HeaterDuration),
 }
 
 impl ReadingMode {
+    /// I2C command byte for the given reading mode.
     fn command_byte(&self) -> u8 {
         match self {
             ReadingMode::HighPrecision => 0xFD,
@@ -51,9 +77,37 @@ impl ReadingMode {
 }
 
 /// How long to delay before attempting to read from the sensor.
+///
+/// The sensor will reject (with NACK) attempts to read before the measurement
+/// is ready, so using the maximum delay mode _may_ allow for more reliable
+/// first-time reads.
+///
+/// The **increase** from typical to maximum delay for each mode are:
+///
+/// - Low: 0.3ms
+/// - Medium: 0.8ms
+/// - High: 1.4ms
+/// - Heater, short: 10ms
+/// - Heater, long: 100ms
+///
+/// Refer to p10 of the datasheet for full timing details.
 #[derive(Clone, Copy)]
 pub enum ReadingDelayMode {
+    /// Use the typical delay times before attempting to read.
+    ///
+    /// - Low: 1.3ms
+    /// - Medium: 3.7ms
+    /// - High: 6.9ms
+    /// - Heater, short: 100ms
+    /// - Heater, long: 1,000ms
     Typical,
+    /// Use the maximum delay times before attempting to read.
+    ///
+    /// - Low: 1.6ms
+    /// - Medium: 4.5ms
+    /// - High: 8.3ms
+    /// - Heater, short: 110ms
+    /// - Heater, long: 1,100ms
     Maximum,
 }
 
@@ -330,4 +384,22 @@ fn reading_to_humidity(bytes: [u8; 2]) -> f32 {
     let s_rh: f32 = reading.into();
     let converted = -6.0 + 125.0 * (s_rh / 65_535.0);
     converted.clamp(0.0, 100.0)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::crc8;
+
+    #[test]
+    fn crc_0000() {
+        assert_eq!(crc8(&[0x00, 0x00]), 0x81);
+        assert_eq!(crc8(&[0x00, 0x00, 0x81]), 0x00);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn crc_BEEF() {
+        assert_eq!(crc8(&[0xBE, 0xEF]), 0x92);
+        assert_eq!(crc8(&[0xBE, 0xEF, 0x92]), 0x00);
+    }
 }
