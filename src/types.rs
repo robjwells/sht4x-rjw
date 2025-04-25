@@ -175,3 +175,15 @@ impl Default for Config {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub struct Measurement {
+    /// Temperature value converted from the raw sensor reading using the
+    /// formulas at 4.6 (p12) in the SHT4x datasheet.
+    pub temperature: f32,
+    pub temperature_unit: TemperatureUnit,
+    /// Percent relative humidity converted from the raw sensor reading using
+    /// the formulas at 4.6 (p12) in the SHT4x datasheet. The humidity value
+    /// is clamped to `[0, 100]` %RH.
+    pub humidity: f32,
+}

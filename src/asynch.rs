@@ -1,5 +1,5 @@
-use embedded_hal::delay::DelayNs;
-use embedded_hal::i2c::{I2c, SevenBitAddress};
+use embedded_hal_async::delay::DelayNs;
+use embedded_hal_async::i2c::{I2c, SevenBitAddress};
 
 use crate::error::Error;
 use crate::types::*;
@@ -26,17 +26,19 @@ impl<I: I2c> SHT40<I> {
         self.i2c
     }
 
-    pub fn serial_number(&mut self) -> Result<u32, Error<I::Error>> {
+    pub async fn serial_number(&mut self) -> Result<u32, Error<I::Error>> {
         self.serial_number_with_settings(self.config.should_validate_crc)
+            .await
     }
 
-    pub fn serial_number_with_settings(
+    pub async fn serial_number_with_settings(
         &mut self,
         should_validate_crc: bool,
     ) -> Result<u32, Error<I::Error>> {
         self.i2c
-            .write(self.address, &[READ_SERIAL_NUMBER_COMMAND])?;
-        self.i2c.read(self.address, &mut self.read_buffer)?;
+            .write(self.address, &[READ_SERIAL_NUMBER_COMMAND])
+            .await?;
+        self.i2c.read(self.address, &mut self.read_buffer).await?;
 
         if should_validate_crc {
             validate_crc(
@@ -54,17 +56,17 @@ impl<I: I2c> SHT40<I> {
         ]))
     }
 
-    pub fn soft_reset(&mut self, mut delay: impl DelayNs) -> Result<(), Error<I::Error>> {
+    pub async fn soft_reset(&mut self, mut delay: impl DelayNs) -> Result<(), Error<I::Error>> {
         const SOFT_RESET_COMMAND: u8 = 0x94;
 
-        self.i2c.write(self.address, &[SOFT_RESET_COMMAND])?;
-        delay.delay_ms(1);
+        self.i2c.write(self.address, &[SOFT_RESET_COMMAND]).await?;
+        delay.delay_ms(1).await;
         Ok(())
     }
 
     /// Measure temperature and humidity with the settings provided upon
     /// construction of the sensor struct.
-    pub fn measure(&mut self, delay: impl DelayNs) -> Result<Measurement, Error<I::Error>> {
+    pub async fn measure(&mut self, delay: impl DelayNs) -> Result<Measurement, Error<I::Error>> {
         self.measure_with_settings(
             delay,
             self.config.reading_mode,
@@ -72,10 +74,11 @@ impl<I: I2c> SHT40<I> {
             self.config.temperature_unit,
             self.config.should_validate_crc,
         )
+        .await
     }
 
     /// Measure temperature and humidity with the given settings.
-    pub fn measure_with_settings(
+    pub async fn measure_with_settings(
         &mut self,
         mut delay: impl DelayNs,
         reading_mode: ReadingMode,
@@ -86,9 +89,9 @@ impl<I: I2c> SHT40<I> {
         let command = reading_mode.command_byte();
         let us = delay_mode.us_for_reading_mode(reading_mode);
 
-        self.i2c.write(self.address, &[command])?;
-        delay.delay_us(us);
-        self.i2c.read(self.address, &mut self.read_buffer)?;
+        self.i2c.write(self.address, &[command]).await?;
+        delay.delay_us(us).await;
+        self.i2c.read(self.address, &mut self.read_buffer).await?;
 
         if should_validate_crc {
             validate_crc(&self.read_buffer, "temperature bytes", "humidity bytes")?;

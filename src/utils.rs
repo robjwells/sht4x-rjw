@@ -1,8 +1,33 @@
+use crate::error::Error;
+
+pub const READ_SERIAL_NUMBER_COMMAND: u8 = 0x89;
+
+/// Validate the CRC for each half of the read buffer, returning the
+/// `first_failure` message if the first three bytes fail to validate,
+/// and `second_failure` if the last three bytes fail to validate.
+pub fn validate_crc<E>(
+    bytes: &[u8; 6],
+    first_failure: &'static str,
+    second_failure: &'static str,
+) -> Result<(), Error<E>>
+where
+    E: embedded_hal::i2c::Error,
+{
+    if crc8(&bytes[0..3]) != 0 {
+        return Err(Error::CrcValidationFailed(first_failure));
+    }
+    if crc8(&bytes[3..6]) != 0 {
+        return Err(Error::CrcValidationFailed(second_failure));
+    }
+    Ok(())
+}
+
 /// Calculate the CRC8/NRSC5 for the given bytes.
 ///
 /// This is pre-set with the polynomial 0x31 and the initial value of 0xFF,
 /// with no reflection or final XOR, as specified at 4.4 (p11) in the SHT4x
 /// datasheet.
+#[must_use]
 pub fn crc8(bytes: &[u8]) -> u8 {
     const fn top_bit_set(b: u8) -> bool {
         b & 0x80 == 0x80
