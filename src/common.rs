@@ -1,19 +1,19 @@
 use crate::error::{CrcFailureReason, Error};
 
-pub const READ_SERIAL_NUMBER_COMMAND: u8 = 0x89;
-pub const SOFT_RESET_COMMAND: u8 = 0x94;
+pub(crate) const READ_SERIAL_NUMBER_COMMAND: u8 = 0x89;
+pub(crate) const SOFT_RESET_COMMAND: u8 = 0x94;
 
-pub struct Unvalidated([u8; 6]);
+pub(crate) struct Unvalidated([u8; 6]);
 
 impl Unvalidated {
-    pub fn new(bytes: [u8; 6]) -> Self {
+    pub(crate) fn new(bytes: [u8; 6]) -> Self {
         Self(bytes)
     }
 
     /// Return the data bytes from the sensor if the CRC for each pair
     /// is valid, otherwise return an error with the appropriate description
     /// of which bytes failed to validate.
-    pub fn try_get_bytes<I>(
+    pub(crate) fn try_get_bytes<I>(
         self,
         first_byte_pair_meaning: CrcFailureReason,
         second_byte_pair_meaning: CrcFailureReason,
@@ -88,7 +88,7 @@ pub enum ReadingMode {
 
 impl ReadingMode {
     /// I2C command byte for the given reading mode.
-    pub fn command_byte(&self) -> u8 {
+    pub(crate) fn command_byte(&self) -> u8 {
         match self {
             ReadingMode::HighPrecision => 0xFD,
             ReadingMode::MediumPrecision => 0xF6,
@@ -146,7 +146,7 @@ impl ReadingDelayMode {
     /// Attempting to read from the sensor before its operation has completed
     /// will result in a NACK from the sensor, so this delay is used to ensure
     /// we can successfully read the measurement data over I2C.
-    pub fn us_for_reading_mode(&self, reading_mode: ReadingMode) -> u32 {
+    pub(crate) fn us_for_reading_mode(&self, reading_mode: ReadingMode) -> u32 {
         use ReadingDelayMode::{Maximum, Typical};
         use ReadingMode::{HighPrecision, HighPrecisionWithHeater, LowPrecision, MediumPrecision};
 
@@ -186,7 +186,7 @@ pub struct Measurement {
 }
 
 impl Measurement {
-    pub fn from_read_bytes<I>(sensor_data: Unvalidated) -> Result<Self, Error<I>>
+    pub(crate) fn from_read_bytes<I>(sensor_data: Unvalidated) -> Result<Self, Error<I>>
     where
         I: embedded_hal::i2c::Error,
     {
@@ -213,7 +213,7 @@ impl Measurement {
     }
 }
 
-pub fn serial_number_from_read_bytes<I>(sensor_data: Unvalidated) -> Result<u32, Error<I>>
+pub(crate) fn serial_number_from_read_bytes<I>(sensor_data: Unvalidated) -> Result<u32, Error<I>>
 where
     I: embedded_hal::i2c::Error,
 {
@@ -230,7 +230,7 @@ where
 /// with no reflection or final XOR, as specified at 4.4 (p11) in the SHT4x
 /// datasheet.
 #[must_use]
-pub fn crc8(bytes: &[u8]) -> u8 {
+pub(crate) fn crc8(bytes: &[u8]) -> u8 {
     const fn top_bit_set(b: u8) -> bool {
         b & 0x80 == 0x80
     }
