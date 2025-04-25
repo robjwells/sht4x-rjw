@@ -27,26 +27,16 @@ impl<I: I2c> SHT40<I> {
     }
 
     pub async fn serial_number(&mut self) -> Result<u32, Error<I::Error>> {
-        self.serial_number_with_settings(self.config.should_validate_crc)
-            .await
-    }
-
-    pub async fn serial_number_with_settings(
-        &mut self,
-        should_validate_crc: bool,
-    ) -> Result<u32, Error<I::Error>> {
         self.i2c
             .write(self.address, &[READ_SERIAL_NUMBER_COMMAND])
             .await?;
         self.i2c.read(self.address, &mut self.read_buffer).await?;
 
-        if should_validate_crc {
-            validate_crc(
-                &self.read_buffer,
-                "first two bytes of serial number",
-                "second two bytes of serial number",
-            )?;
-        }
+        validate_crc(
+            &self.read_buffer,
+            "first two bytes of serial number",
+            "second two bytes of serial number",
+        )?;
 
         Ok(u32::from_be_bytes([
             self.read_buffer[0],
@@ -72,7 +62,6 @@ impl<I: I2c> SHT40<I> {
             self.config.reading_mode,
             self.config.delay_mode,
             self.config.temperature_unit,
-            self.config.should_validate_crc,
         )
         .await
     }
@@ -84,7 +73,6 @@ impl<I: I2c> SHT40<I> {
         reading_mode: ReadingMode,
         delay_mode: ReadingDelayMode,
         temperature_unit: TemperatureUnit,
-        should_validate_crc: bool,
     ) -> Result<Measurement, Error<I::Error>> {
         let command = reading_mode.command_byte();
         let us = delay_mode.us_for_reading_mode(reading_mode);
@@ -93,9 +81,7 @@ impl<I: I2c> SHT40<I> {
         delay.delay_us(us).await;
         self.i2c.read(self.address, &mut self.read_buffer).await?;
 
-        if should_validate_crc {
-            validate_crc(&self.read_buffer, "temperature bytes", "humidity bytes")?;
-        }
+        validate_crc(&self.read_buffer, "temperature bytes", "humidity bytes")?;
 
         let [t0, t1, _, h0, h1, _] = self.read_buffer;
         let temperature = temperature_unit.convert_reading([t0, t1]);

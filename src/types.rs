@@ -162,7 +162,6 @@ pub struct Config {
     pub reading_mode: ReadingMode,
     pub delay_mode: ReadingDelayMode,
     pub temperature_unit: TemperatureUnit,
-    pub should_validate_crc: bool,
 }
 
 impl Default for Config {
@@ -171,7 +170,6 @@ impl Default for Config {
             reading_mode: ReadingMode::HighPrecision,
             delay_mode: ReadingDelayMode::Typical,
             temperature_unit: TemperatureUnit::Celsius,
-            should_validate_crc: true,
         }
     }
 }
