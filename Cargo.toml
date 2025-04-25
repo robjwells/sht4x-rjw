@@ -14,5 +14,6 @@ embedded-hal-async = { version = "1.0.0", optional = true }
 
 [dev-dependencies]
 anyhow = "1.0.97"
-embedded-hal-mock = "0.11.1"
+defmt = "1.0.1"
+embedded-hal-mock = { version = "0.11.1", features = ["embedded-hal-async"] }
 mcp2221 = { version = "0.1.1", path = "../mcp2221-rs-rjw" }
