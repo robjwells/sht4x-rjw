@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::{CrcFailureReason, Error};
 
 pub const READ_SERIAL_NUMBER_COMMAND: u8 = 0x89;
 pub const SOFT_RESET_COMMAND: u8 = 0x94;
@@ -15,8 +15,8 @@ impl Unvalidated {
     /// of which bytes failed to validate.
     pub fn try_get_bytes<I>(
         self,
-        first_byte_pair_meaning: &'static str,
-        second_byte_pair_meaning: &'static str,
+        first_byte_pair_meaning: CrcFailureReason,
+        second_byte_pair_meaning: CrcFailureReason,
     ) -> Result<[u8; 4], Error<I>>
     where
         I: embedded_hal::i2c::Error,
@@ -228,7 +228,10 @@ impl Measurement {
     where
         I: embedded_hal::i2c::Error,
     {
-        let [t0, t1, h0, h1] = sensor_data.try_get_bytes("temperature bytes", "humidity bytes")?;
+        let [t0, t1, h0, h1] = sensor_data.try_get_bytes(
+            CrcFailureReason::TemperatureBytes,
+            CrcFailureReason::HumidityBytes,
+        )?;
         let temperature = temperature_unit.convert_reading([t0, t1]);
         let humidity = Measurement::reading_to_humidity([h0, h1]);
 
@@ -252,8 +255,8 @@ where
     I: embedded_hal::i2c::Error,
 {
     let bytes = sensor_data.try_get_bytes(
-        "first two bytes of serial number",
-        "second two bytes of serial number",
+        CrcFailureReason::SerialNumberFirstPair,
+        CrcFailureReason::SerialNumberSecondPair,
     )?;
     Ok(u32::from_be_bytes(bytes))
 }
