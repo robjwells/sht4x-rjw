@@ -4,7 +4,5 @@
 pub mod asynch;
 #[cfg(feature = "blocking")]
 pub mod blocking;
+pub mod common;
 pub mod error;
-pub mod types;
-
-mod utils;

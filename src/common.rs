@@ -1,3 +1,37 @@
+use crate::error::Error;
+
+pub const READ_SERIAL_NUMBER_COMMAND: u8 = 0x89;
+pub const SOFT_RESET_COMMAND: u8 = 0x94;
+
+pub struct Unvalidated([u8; 6]);
+
+impl Unvalidated {
+    pub fn new(bytes: [u8; 6]) -> Self {
+        Self(bytes)
+    }
+
+    /// Return the data bytes from the sensor if the CRC for each pair
+    /// is valid, otherwise return an error with the appropriate description
+    /// of which bytes failed to validate.
+    pub fn try_get_bytes<I>(
+        self,
+        first_byte_pair_meaning: &'static str,
+        second_byte_pair_meaning: &'static str,
+    ) -> Result<[u8; 4], Error<I>>
+    where
+        I: embedded_hal::i2c::Error,
+    {
+        let bytes = self.0;
+        if crc8(&bytes[0..3]) != 0 {
+            return Err(Error::CrcValidationFailed(first_byte_pair_meaning));
+        }
+        if crc8(&bytes[3..6]) != 0 {
+            return Err(Error::CrcValidationFailed(second_byte_pair_meaning));
+        }
+        Ok([bytes[0], bytes[1], bytes[3], bytes[4]])
+    }
+}
+
 /// Power applied to the sensor heater before reading.
 #[derive(Clone, Copy)]
 pub enum HeaterPower {
@@ -184,4 +218,94 @@ pub struct Measurement {
     /// the formulas at 4.6 (p12) in the SHT4x datasheet. The humidity value
     /// is clamped to `[0, 100]` %RH.
     pub humidity: f32,
+}
+
+impl Measurement {
+    pub fn from_read_bytes<I>(
+        sensor_data: Unvalidated,
+        temperature_unit: TemperatureUnit,
+    ) -> Result<Self, Error<I>>
+    where
+        I: embedded_hal::i2c::Error,
+    {
+        let [t0, t1, h0, h1] = sensor_data.try_get_bytes("temperature bytes", "humidity bytes")?;
+        let temperature = temperature_unit.convert_reading([t0, t1]);
+        let humidity = Measurement::reading_to_humidity([h0, h1]);
+
+        Ok(Measurement {
+            temperature,
+            temperature_unit,
+            humidity,
+        })
+    }
+
+    fn reading_to_humidity(bytes: [u8; 2]) -> f32 {
+        let reading = u16::from_be_bytes(bytes);
+        let s_rh: f32 = reading.into();
+        let converted = -6.0 + 125.0 * (s_rh / 65_535.0);
+        converted.clamp(0.0, 100.0)
+    }
+}
+
+pub fn serial_number_from_read_bytes<I>(sensor_data: Unvalidated) -> Result<u32, Error<I>>
+where
+    I: embedded_hal::i2c::Error,
+{
+    let bytes = sensor_data.try_get_bytes(
+        "first two bytes of serial number",
+        "second two bytes of serial number",
+    )?;
+    Ok(u32::from_be_bytes(bytes))
+}
+
+/// Calculate the CRC8/NRSC5 for the given bytes.
+///
+/// This is pre-set with the polynomial 0x31 and the initial value of 0xFF,
+/// with no reflection or final XOR, as specified at 4.4 (p11) in the SHT4x
+/// datasheet.
+#[must_use]
+pub fn crc8(bytes: &[u8]) -> u8 {
+    const fn top_bit_set(b: u8) -> bool {
+        b & 0x80 == 0x80
+    }
+
+    const POLYNOMIAL: u8 = 0x31;
+    const INITIAL: u8 = 0xFF;
+
+    let mut crc: u8 = INITIAL;
+    for byte in bytes {
+        crc ^= byte; // "XOR-in" the next byte.
+        for _ in 0..8 {
+            if top_bit_set(crc) {
+                // CRC polynomials have their n+1 bit (here, 9th bit, x^8)
+                // implicitly set, so we test the top bit of the current CRC
+                // byte, then shift it left before applying the polynomial.
+                crc <<= 1;
+                crc ^= POLYNOMIAL;
+            } else {
+                // If the top bit is not set, just keep shifting until it is.
+                crc <<= 1;
+            }
+        }
+    }
+
+    crc
+}
+
+#[cfg(test)]
+mod test {
+    use super::crc8;
+
+    #[test]
+    fn crc_0000() {
+        assert_eq!(crc8(&[0x00, 0x00]), 0x81);
+        assert_eq!(crc8(&[0x00, 0x00, 0x81]), 0x00);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn crc_BEEF() {
+        assert_eq!(crc8(&[0xBE, 0xEF]), 0x92);
+        assert_eq!(crc8(&[0xBE, 0xEF, 0x92]), 0x00);
+    }
 }

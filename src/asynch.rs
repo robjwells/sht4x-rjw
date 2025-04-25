@@ -1,9 +1,13 @@
 use embedded_hal_async::delay::DelayNs;
 use embedded_hal_async::i2c::{I2c, SevenBitAddress};
 
+use crate::common::{
+    READ_SERIAL_NUMBER_COMMAND, SOFT_RESET_COMMAND, serial_number_from_read_bytes,
+};
 use crate::error::Error;
-use crate::types::*;
-use crate::utils::*;
+use crate::common::{
+    Config, Measurement, ReadingDelayMode, ReadingMode, TemperatureUnit, Unvalidated,
+};
 
 pub struct SHT40<I: I2c> {
     i2c: I,
@@ -31,24 +35,10 @@ impl<I: I2c> SHT40<I> {
             .write(self.address, &[READ_SERIAL_NUMBER_COMMAND])
             .await?;
         self.i2c.read(self.address, &mut self.read_buffer).await?;
-
-        validate_crc(
-            &self.read_buffer,
-            "first two bytes of serial number",
-            "second two bytes of serial number",
-        )?;
-
-        Ok(u32::from_be_bytes([
-            self.read_buffer[0],
-            self.read_buffer[1],
-            self.read_buffer[3],
-            self.read_buffer[4],
-        ]))
+        serial_number_from_read_bytes(Unvalidated::new(self.read_buffer))
     }
 
     pub async fn soft_reset(&mut self, mut delay: impl DelayNs) -> Result<(), Error<I::Error>> {
-        const SOFT_RESET_COMMAND: u8 = 0x94;
-
         self.i2c.write(self.address, &[SOFT_RESET_COMMAND]).await?;
         delay.delay_ms(1).await;
         Ok(())
@@ -81,16 +71,6 @@ impl<I: I2c> SHT40<I> {
         delay.delay_us(us).await;
         self.i2c.read(self.address, &mut self.read_buffer).await?;
 
-        validate_crc(&self.read_buffer, "temperature bytes", "humidity bytes")?;
-
-        let [t0, t1, _, h0, h1, _] = self.read_buffer;
-        let temperature = temperature_unit.convert_reading([t0, t1]);
-        let humidity = reading_to_humidity([h0, h1]);
-
-        Ok(Measurement {
-            temperature,
-            temperature_unit,
-            humidity,
-        })
+        Measurement::from_read_bytes(Unvalidated::new(self.read_buffer), temperature_unit)
     }
 }
