@@ -165,37 +165,9 @@ impl ReadingDelayMode {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum TemperatureUnit {
-    Celsius,
-    Fahrenheit,
-}
-
-impl TemperatureUnit {
-    fn reading_to_celsius(bytes: [u8; 2]) -> f32 {
-        let reading = u16::from_be_bytes(bytes);
-        let s_t: f32 = reading.into();
-        -45.0 + 175.0 * (s_t / 65_535.0)
-    }
-
-    fn reading_to_fahrenheit(bytes: [u8; 2]) -> f32 {
-        let reading = u16::from_be_bytes(bytes);
-        let s_t: f32 = reading.into();
-        -49.0 + 315.0 * (s_t / 65_535.0)
-    }
-
-    pub fn convert_reading(&self, bytes: [u8; 2]) -> f32 {
-        match self {
-            TemperatureUnit::Celsius => Self::reading_to_celsius(bytes),
-            TemperatureUnit::Fahrenheit => Self::reading_to_fahrenheit(bytes),
-        }
-    }
-}
-
 pub struct Config {
     pub reading_mode: ReadingMode,
     pub delay_mode: ReadingDelayMode,
-    pub temperature_unit: TemperatureUnit,
 }
 
 impl Default for Config {
@@ -203,28 +175,18 @@ impl Default for Config {
         Self {
             reading_mode: ReadingMode::HighPrecision,
             delay_mode: ReadingDelayMode::Typical,
-            temperature_unit: TemperatureUnit::Celsius,
         }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Measurement {
-    /// Temperature value converted from the raw sensor reading using the
-    /// formulas at 4.6 (p12) in the SHT4x datasheet.
-    pub temperature: f32,
-    pub temperature_unit: TemperatureUnit,
-    /// Percent relative humidity converted from the raw sensor reading using
-    /// the formulas at 4.6 (p12) in the SHT4x datasheet. The humidity value
-    /// is clamped to `[0, 100]` %RH.
-    pub humidity: f32,
+    pub raw_temperature_reading: u16,
+    pub raw_humidity_reading: u16,
 }
 
 impl Measurement {
-    pub fn from_read_bytes<I>(
-        sensor_data: Unvalidated,
-        temperature_unit: TemperatureUnit,
-    ) -> Result<Self, Error<I>>
+    pub fn from_read_bytes<I>(sensor_data: Unvalidated) -> Result<Self, Error<I>>
     where
         I: embedded_hal::i2c::Error,
     {
@@ -232,21 +194,22 @@ impl Measurement {
             CrcFailureReason::TemperatureBytes,
             CrcFailureReason::HumidityBytes,
         )?;
-        let temperature = temperature_unit.convert_reading([t0, t1]);
-        let humidity = Measurement::reading_to_humidity([h0, h1]);
-
         Ok(Measurement {
-            temperature,
-            temperature_unit,
-            humidity,
+            raw_temperature_reading: u16::from_be_bytes([t0, t1]),
+            raw_humidity_reading: u16::from_be_bytes([h0, h1]),
         })
     }
 
-    fn reading_to_humidity(bytes: [u8; 2]) -> f32 {
-        let reading = u16::from_be_bytes(bytes);
-        let s_rh: f32 = reading.into();
-        let converted = -6.0 + 125.0 * (s_rh / 65_535.0);
-        converted.clamp(0.0, 100.0)
+    pub fn celsius(&self) -> f32 {
+        crate::conversions::temperature_reading_to_celsius(self.raw_temperature_reading)
+    }
+
+    pub fn fahrenheit(&self) -> f32 {
+        crate::conversions::temperature_reading_to_fahrenheit(self.raw_temperature_reading)
+    }
+
+    pub fn humidity(&self) -> f32 {
+        crate::conversions::humidity_reading_to_percent_rh(self.raw_humidity_reading)
     }
 }
 

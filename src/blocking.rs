@@ -2,7 +2,7 @@ use embedded_hal::delay::DelayNs;
 use embedded_hal::i2c::{I2c, SevenBitAddress};
 
 use crate::common::{
-    Config, Measurement, ReadingDelayMode, ReadingMode, TemperatureUnit, Unvalidated,
+    Config, Measurement, ReadingDelayMode, ReadingMode, Unvalidated,
 };
 use crate::common::{
     READ_SERIAL_NUMBER_COMMAND, SOFT_RESET_COMMAND, serial_number_from_read_bytes,
@@ -50,7 +50,6 @@ impl<I: I2c> SHT40<I> {
             delay,
             self.config.reading_mode,
             self.config.delay_mode,
-            self.config.temperature_unit,
         )
     }
 
@@ -60,7 +59,6 @@ impl<I: I2c> SHT40<I> {
         mut delay: impl DelayNs,
         reading_mode: ReadingMode,
         delay_mode: ReadingDelayMode,
-        temperature_unit: TemperatureUnit,
     ) -> Result<Measurement, Error<I::Error>> {
         let command = reading_mode.command_byte();
         let us = delay_mode.us_for_reading_mode(reading_mode);
@@ -69,6 +67,6 @@ impl<I: I2c> SHT40<I> {
         delay.delay_us(us);
         self.i2c.read(self.address, &mut self.read_buffer)?;
 
-        Measurement::from_read_bytes(Unvalidated::new(self.read_buffer), temperature_unit)
+        Measurement::from_read_bytes(Unvalidated::new(self.read_buffer))
     }
 }

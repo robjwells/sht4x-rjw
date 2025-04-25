@@ -6,7 +6,7 @@ use crate::common::{
 };
 use crate::error::Error;
 use crate::common::{
-    Config, Measurement, ReadingDelayMode, ReadingMode, TemperatureUnit, Unvalidated,
+    Config, Measurement, ReadingDelayMode, ReadingMode, Unvalidated,
 };
 
 pub struct SHT40<I: I2c> {
@@ -51,7 +51,6 @@ impl<I: I2c> SHT40<I> {
             delay,
             self.config.reading_mode,
             self.config.delay_mode,
-            self.config.temperature_unit,
         )
         .await
     }
@@ -62,7 +61,6 @@ impl<I: I2c> SHT40<I> {
         mut delay: impl DelayNs,
         reading_mode: ReadingMode,
         delay_mode: ReadingDelayMode,
-        temperature_unit: TemperatureUnit,
     ) -> Result<Measurement, Error<I::Error>> {
         let command = reading_mode.command_byte();
         let us = delay_mode.us_for_reading_mode(reading_mode);
@@ -71,6 +69,6 @@ impl<I: I2c> SHT40<I> {
         delay.delay_us(us).await;
         self.i2c.read(self.address, &mut self.read_buffer).await?;
 
-        Measurement::from_read_bytes(Unvalidated::new(self.read_buffer), temperature_unit)
+        Measurement::from_read_bytes(Unvalidated::new(self.read_buffer))
     }
 }

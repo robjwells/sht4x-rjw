@@ -15,7 +15,7 @@ fn mcp() -> anyhow::Result<()> {
     let measurement = sensor.measure(StdSleep::new())?;
     println!(
         "{}°C\t{} %RH",
-        measurement.temperature, measurement.humidity
+        measurement.celsius(), measurement.humidity()
     );
 
     Ok(())
