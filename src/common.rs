@@ -107,7 +107,7 @@ pub enum HeaterDuration {
 /// These repeatability figures are stated below for each reading mode.
 ///
 /// Note that lower precision readings complete faster than higher precision
-/// readings (see [ReadingDelayMode] and section 3.2 of the datasheet).
+/// readings (see [DelayMode] and section 3.2 of the datasheet).
 /// As well, "low precision" does not mean "inaccurate" and the acceptable
 /// level of repeatability will depend on your own use case.
 ///
@@ -176,7 +176,7 @@ impl ReadingMode {
 ///
 /// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
 #[derive(Clone, Copy)]
-pub enum ReadingDelayMode {
+pub enum DelayMode {
     /// Use the typical delay times before attempting to read.
     ///
     /// - Low: 1.3ms
@@ -195,7 +195,7 @@ pub enum ReadingDelayMode {
     Maximum,
 }
 
-impl ReadingDelayMode {
+impl DelayMode {
     /// Microsecond delay for the current delay mode and the given reading mode.
     ///
     /// Attempting to read from the sensor before its operation has completed
@@ -203,7 +203,7 @@ impl ReadingDelayMode {
     /// interface), so this delay is used to ensure we can successfully read
     /// the measurement data over I2C.
     pub(crate) fn us_for_reading_mode(&self, reading_mode: ReadingMode) -> u32 {
-        use ReadingDelayMode::{Maximum, Typical};
+        use DelayMode::{Maximum, Typical};
         use ReadingMode::{HighPrecision, HighPrecisionWithHeater, LowPrecision, MediumPrecision};
 
         match (reading_mode, self) {
@@ -238,7 +238,7 @@ pub struct Config {
     /// Default measurement precision or heater usage.
     pub reading_mode: ReadingMode,
     /// Default delay mode.
-    pub delay_mode: ReadingDelayMode,
+    pub delay_mode: DelayMode,
 }
 
 impl Default for Config {
@@ -246,7 +246,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             reading_mode: ReadingMode::HighPrecision,
-            delay_mode: ReadingDelayMode::Typical,
+            delay_mode: DelayMode::Typical,
         }
     }
 }

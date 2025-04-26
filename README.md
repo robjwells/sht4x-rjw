@@ -69,10 +69,10 @@ When you create the sensor, it takes a configuration struct, [`common::Config`].
 Here are its default values:
 
 ```rust
-# use sht40_rjw::common::{Config, ReadingMode, ReadingDelayMode};
+# use sht40_rjw::common::{Config, ReadingMode, DelayMode};
 Config {
     reading_mode: ReadingMode::HighPrecision,
-    delay_mode: ReadingDelayMode::Typical,
+    delay_mode: DelayMode::Typical,
 };
 ```
 
@@ -83,7 +83,7 @@ listed in the datasheet.
 **NOTE** that the SHT4x does not respond to reads that occur before the
 requested measurement is ready, which will cause the measurement method to
 fail with an [`i2c::Error`]. If you find that you are encountering NACK errors
-when attempting to measure, try switching to [`ReadingDelayMode::Maximum`].
+when attempting to measure, try switching to [`DelayMode::Maximum`].
 Please see section 3.2 of the [datasheet] for timings.
 
 ## Sensor I2C address
@@ -141,6 +141,6 @@ the [MIT License], at your option.
 [sht4xa]: https://sensirion.com/media/documents/C43ACD8C/67BD838A/HT_DS_Datasheet_SHT4xA_3.pdf
 [`embedded-hal-async`]: https://docs.rs/embedded-hal-async/latest/embedded_hal_async/
 [`i2c::Error`]: embedded_hal::i2c::Error
-[`ReadingDelayMode::Maximum`]: crate::common::ReadingDelayMode::Maximum
+[`DelayMode::Maximum`]: crate::common::DelayMode::Maximum
 [Apache License, Version 2.0]: https://opensource.org/license/apache-2-0
 [MIT License]: https://opensource.org/license/mit

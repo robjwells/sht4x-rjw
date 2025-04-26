@@ -2,7 +2,7 @@
 use embedded_hal_async::delay::DelayNs;
 use embedded_hal_async::i2c::{I2c, SevenBitAddress};
 
-use crate::common::{Config, Measurement, ReadingDelayMode, ReadingMode, Unvalidated};
+use crate::common::{Config, Measurement, DelayMode, ReadingMode, Unvalidated};
 use crate::common::{
     READ_SERIAL_NUMBER_COMMAND, SOFT_RESET_COMMAND, serial_number_from_read_bytes,
 };
@@ -85,7 +85,7 @@ impl<I: I2c> SHT40<I> {
     ///         HeaterPower::High,
     ///         HeaterDuration::Long,
     ///     ),
-    ///     delay_mode: ReadingDelayMode::Maximum,
+    ///     delay_mode: DelayMode::Maximum,
     /// });
     /// # sensor.destroy().done();
     /// ```
@@ -159,13 +159,13 @@ impl<I: I2c> SHT40<I> {
     ///
     /// A delay is required between requesting the measurement and being able
     /// to read in the data. This varies depending on your reading and delay
-    /// modes. Refer to the [ReadingDelayMode] documentation for the length
+    /// modes. Refer to the [DelayMode] documentation for the length
     /// of the delay.
     pub async fn measure_with_settings(
         &mut self,
         mut delay: impl DelayNs,
         reading_mode: ReadingMode,
-        delay_mode: ReadingDelayMode,
+        delay_mode: DelayMode,
     ) -> Result<Measurement, Error<I::Error>> {
         let command = reading_mode.command_byte();
         let us = delay_mode.us_for_reading_mode(reading_mode);
