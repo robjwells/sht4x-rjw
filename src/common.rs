@@ -3,6 +3,8 @@ use crate::error::{CrcFailureReason, Error};
 pub(crate) const READ_SERIAL_NUMBER_COMMAND: u8 = 0x89;
 pub(crate) const SOFT_RESET_COMMAND: u8 = 0x94;
 
+/// Internal wrapper around the 6 bytes read from the sensor, so that the
+/// 4 data bytes may only be accessed after passing CRC verification.
 pub(crate) struct Unvalidated([u8; 6]);
 
 impl Unvalidated {
@@ -13,6 +15,15 @@ impl Unvalidated {
     /// Return the data bytes from the sensor if the CRC for each pair
     /// is valid, otherwise return an error with the appropriate description
     /// of which bytes failed to validate.
+    ///
+    /// If we name the bytes read from the sensor `s0` through `s5`, the
+    /// bytes returned from this method are `[s0, s1, s3, s4]`, as bytes
+    /// `s2` and `s5` are CRC values for the preceding two bytes.
+    ///
+    /// See sections 4.3 and 4.5 of the [datasheet] for a detailed description
+    /// of the six bytes returned for each I2C command.
+    ///
+    /// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
     pub(crate) fn try_get_bytes<I>(
         self,
         first_byte_pair_meaning: CrcFailureReason,
@@ -32,18 +43,45 @@ impl Unvalidated {
     }
 }
 
-/// Power applied to the sensor heater before reading.
+/// Power applied to the sensor heater before measuring.
+///
+/// See section 4.9 of the [datasheet] for general information on use of the
+/// sensor heater, and section 3.1 for heater current data. Current figures
+/// for each variant are drawn from those sections, where the "typical" values
+/// are at 3.3V supply and 25°C ambient temperature, and maximum values are
+/// valid across the full −40°C to 125°C temperature range.
+///
+/// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
 #[derive(Clone, Copy)]
 pub enum HeaterPower {
-    /// 200mW
+    /// 200mW nominal
+    ///
+    /// Typically this is 60mA of current, up to a maximum of 100mA.
+    /// Note that, in section 4.9 of the datasheet, Sensirion list the
+    /// highest heater power mode as drawing "~75 mA".
     High,
-    /// 110mW
+    /// 110mW nominal
+    ///
+    /// Typically 33mA, up to a maximum of 55mA.
     Medium,
-    /// 20mW
+    /// 20mW nominal
+    ///
+    /// Typically 6mA, up to a maximum of 10mA.
     Low,
 }
 
-/// Length of time to run the heater before reading.
+/// Length of time to run the heater before measuring.
+///
+/// See section 3.2 of the [datasheet] for timing details. In short, the actual
+/// heater pulse duration may be ±10% of the listed duration. The heater is
+/// automatically shut off after the heating pulse.
+///
+/// Note that Sensirion state "the heater is designed for a maximum duty cycle
+/// of 10%, meaning the total heater-on-time should not be longer than 10% of
+/// the sensor’s lifetime". See section 4.9 of the datasheet for further
+/// information.
+///
+/// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
 #[derive(Clone, Copy)]
 pub enum HeaterDuration {
     /// 1 second
@@ -53,36 +91,42 @@ pub enum HeaterDuration {
 }
 
 #[derive(Clone, Copy)]
-/// Level of accuracy with which to read the sensor.
+/// Level of precision with which to read the sensor.
 ///
-/// ## Precision
+/// "Precision" or "accuracy" here refer to the repeatability of the measurement,
+/// i.e. consecutive readings at lower precision will have a wider distribution
+/// than those taken at higher precision.
 ///
-/// The values given for each precision mode are three times the
-/// standard deviation of multiple consecutive measurement values
-/// at constant conditions and are a measure for the noise on the
-/// physical sensor output. (Paraphrasing slightly from p4 of the
-/// datasheet.)
+/// Note 2 in section 2 of the [datasheet] states:
 ///
-/// ## Heater
+/// > The stated repeatability is three times the standard deviation (3σ) of
+/// > multiple consecutive measurement values at constant conditions and is a
+/// > measure for the noise on the physical sensor output.
 ///
-/// The sensor may be pre-heated before taking a reading, to improve
-/// humidity readings in high-humidity environments or when there is
-/// moisture on the sensor (p13 of the datasheet). This measurement
-/// is always taken with the high-repeatability mode.
+/// These repeatability figures are stated below for each reading mode.
 ///
-/// The heater is designed for a maximum duty cycle of 10%, meaning the
-/// total heater-on-time should not be longer than 10% of the sensor's
-/// lifetime. (p13)
+/// Note that lower precision readings complete faster than higher precision
+/// readings (see [ReadingDelayMode] and section 3.2 of the datasheet).
+/// As well, "low precision" does not mean "inaccurate" and the acceptable
+/// level of repeatability will depend on your own use case.
 ///
-/// Note that the heater can draw 75mA in its highest power setting.
+/// # Heater
+///
+/// The sensor may be pre-heated before taking a reading, to improve humidity
+/// readings in high-humidity environments or when there is moisture on the
+/// sensor. This measurement is always taken with the high-precision mode.
+/// See section 4.9 of the [datasheet] for information about the use of the
+/// heater, as well as section 3 for electrical and timing information.
+///
+/// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
 pub enum ReadingMode {
-    /// High precision: 0.04°C and 0.08%RH.
+    /// High repeatability: 3σ of 0.04°C and 0.08%RH.
     HighPrecision,
-    /// Medium precision: 0.07°C and 0.15%RH.
+    /// Medium repeatability: 3σ of 0.07°C and 0.15%RH.
     MediumPrecision,
-    /// Low precision: 0.1°C and 0.25%RH.
+    /// Low repeatability: 3σ of 0.1°C and 0.25%RH.
     LowPrecision,
-    /// Apply heat to the sensor before taking a high-precision reading.
+    /// Apply heat to the sensor before taking a high-repeatability reading.
     HighPrecisionWithHeater(HeaterPower, HeaterDuration),
 }
 
@@ -105,7 +149,7 @@ impl ReadingMode {
     }
 }
 
-/// How long to delay before attempting to read from the sensor.
+/// Length of delay before attempting to read from the sensor.
 ///
 /// The sensor will reject (with NACK) attempts to read before the measurement
 /// is ready, so using the maximum delay mode _may_ allow for more reliable

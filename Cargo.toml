@@ -17,3 +17,4 @@ anyhow = "1.0.97"
 defmt = "1.0.1"
 embedded-hal-mock = { version = "0.11.1", features = ["embedded-hal-async"] }
 mcp2221 = { version = "0.1.1", path = "../mcp2221-rs-rjw" }
+pollster = { version = "0.4.0", features = ["macro"] }
