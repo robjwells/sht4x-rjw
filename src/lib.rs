@@ -8,3 +8,5 @@ pub mod blocking;
 pub mod common;
 pub mod conversions;
 pub mod error;
+
+mod crc;
