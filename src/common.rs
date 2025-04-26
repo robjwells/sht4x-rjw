@@ -1,10 +1,11 @@
+//! Functionality used by both blocking and async drivers
 use crate::error::{CrcFailureReason, Error};
 
 pub(crate) const READ_SERIAL_NUMBER_COMMAND: u8 = 0x89;
 pub(crate) const SOFT_RESET_COMMAND: u8 = 0x94;
 
 /// Internal wrapper around the 6 bytes read from the sensor, so that the
-/// 4 data bytes may only be accessed after passing CRC verification.
+/// 4 data bytes may only be accessed after passing CRC validation.
 pub(crate) struct Unvalidated([u8; 6]);
 
 impl Unvalidated {
@@ -90,7 +91,6 @@ pub enum HeaterDuration {
     Short,
 }
 
-#[derive(Clone, Copy)]
 /// Level of precision with which to read the sensor.
 ///
 /// "Precision" or "accuracy" here refer to the repeatability of the measurement,
@@ -119,6 +119,7 @@ pub enum HeaterDuration {
 /// heater, as well as section 3 for electrical and timing information.
 ///
 /// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
+#[derive(Clone, Copy)]
 pub enum ReadingMode {
     /// High repeatability: 3σ of 0.04°C and 0.08%RH.
     HighPrecision,
@@ -132,6 +133,11 @@ pub enum ReadingMode {
 
 impl ReadingMode {
     /// I2C command byte for the given reading mode.
+    ///
+    /// The hexadecimal values of all commands are listed in section 4.5
+    /// of the [datasheet].
+    ///
+    /// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
     pub(crate) fn command_byte(&self) -> u8 {
         match self {
             ReadingMode::HighPrecision => 0xFD,
@@ -153,7 +159,11 @@ impl ReadingMode {
 ///
 /// The sensor will reject (with NACK) attempts to read before the measurement
 /// is ready, so using the maximum delay mode _may_ allow for more reliable
-/// first-time reads.
+/// first-time reads. However, the datasheet states that the listed times
+/// for measurements include the length of time the sensor needs to reach
+/// its idle state after a hard reset, so it is anticipated that the typical
+/// delays will be enough. See section 3.1 of the [datasheet] for full timing
+/// details.
 ///
 /// The **increase** from typical to maximum delay for each mode are:
 ///
@@ -163,7 +173,7 @@ impl ReadingMode {
 /// - Heater, short: 10ms
 /// - Heater, long: 100ms
 ///
-/// Refer to p10 of the datasheet for full timing details.
+/// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
 #[derive(Clone, Copy)]
 pub enum ReadingDelayMode {
     /// Use the typical delay times before attempting to read.
@@ -188,8 +198,9 @@ impl ReadingDelayMode {
     /// Microsecond delay for the current delay mode and the given reading mode.
     ///
     /// Attempting to read from the sensor before its operation has completed
-    /// will result in a NACK from the sensor, so this delay is used to ensure
-    /// we can successfully read the measurement data over I2C.
+    /// will result in a NACK from the sensor (and so an error from the I2C
+    /// interface), so this delay is used to ensure we can successfully read
+    /// the measurement data over I2C.
     pub(crate) fn us_for_reading_mode(&self, reading_mode: ReadingMode) -> u32 {
         use ReadingDelayMode::{Maximum, Typical};
         use ReadingMode::{HighPrecision, HighPrecisionWithHeater, LowPrecision, MediumPrecision};
@@ -209,12 +220,28 @@ impl ReadingDelayMode {
     }
 }
 
+/// Default settings for the sensor's reading and delay modes.
+///
+/// The settings provided in the `Config` when the sensor struct is created
+/// are used for the [`SHT40::measure()`] method, which only requires the
+/// user to provide a delay implementation.
+///
+/// These settings may be changed at any time by mutating the `config` field
+/// of the sensor struct. Otherwise, the [`SHT40::measure_with_settings()`]
+/// method allows the user to specify the reading and delay modes on each
+/// call.
+///
+/// [`SHT40::measure()`]: crate::blocking::SHT40::measure
+/// [`SHT40::measure_with_settings()`]: crate::blocking::SHT40::measure
 pub struct Config {
+    /// Default measurement precision or heater usage.
     pub reading_mode: ReadingMode,
+    /// Default delay mode.
     pub delay_mode: ReadingDelayMode,
 }
 
 impl Default for Config {
+    /// Construct a `Config` for high-precision readings and typical delays.
     fn default() -> Self {
         Self {
             reading_mode: ReadingMode::HighPrecision,
@@ -223,10 +250,23 @@ impl Default for Config {
     }
 }
 
+/// A temperature and humidity measurement from the sensor.
+///
+/// Users should use this struct's methods to convert the raw readings into
+/// recognisable units. (These methods are just wrappers around the functions
+/// provided in [`sht40_rjw::conversions`]).
+///
+/// The "raw" values are also available via methods. They have been
+/// reconstructed as `u16`s from the bytes read from the sensor, after
+/// passing CRC validation, but have otherwise not been converted.
+///
+/// [`sht40_rjw::conversions`]: crate::conversions
 #[derive(Debug, Clone, Copy)]
 pub struct Measurement {
-    pub raw_temperature_reading: u16,
-    pub raw_humidity_reading: u16,
+    /// The unconverted temperature value received from the sensor.
+    raw_temp: u16,
+    /// The unconverted humidity value received from the sensor.
+    raw_humidity: u16,
 }
 
 impl Measurement {
@@ -239,24 +279,38 @@ impl Measurement {
             CrcFailureReason::HumidityBytes,
         )?;
         Ok(Measurement {
-            raw_temperature_reading: u16::from_be_bytes([t0, t1]),
-            raw_humidity_reading: u16::from_be_bytes([h0, h1]),
+            raw_temp: u16::from_be_bytes([t0, t1]),
+            raw_humidity: u16::from_be_bytes([h0, h1]),
         })
     }
 
+    /// Convert the raw temperature reading to celsius.
     pub fn celsius(&self) -> f32 {
-        crate::conversions::temperature_reading_to_celsius(self.raw_temperature_reading)
+        crate::conversions::temperature_reading_to_celsius(self.raw_temp)
     }
 
+    /// Convert the raw temperature reading to fahrenheit.
     pub fn fahrenheit(&self) -> f32 {
-        crate::conversions::temperature_reading_to_fahrenheit(self.raw_temperature_reading)
+        crate::conversions::temperature_reading_to_fahrenheit(self.raw_temp)
     }
 
+    /// Convert the raw humidity reading to percent relative humidity.
     pub fn humidity(&self) -> f32 {
-        crate::conversions::humidity_reading_to_percent_rh(self.raw_humidity_reading)
+        crate::conversions::humidity_reading_to_percent_rh(self.raw_humidity)
+    }
+
+    /// The unconverted temperature reading from the sensor as a 16-bit integer.
+    pub fn raw_temperature_reading(&self) -> u16 {
+        self.raw_temp
+    }
+
+    /// The unconverted humidity reading from the sensor as a 16-bit integer.
+    pub fn raw_humidity_reading(&self) -> u16 {
+        self.raw_humidity
     }
 }
 
+/// Reconstruct the 32-bit serial number after validating the received CRCs.
 pub(crate) fn serial_number_from_read_bytes<I>(sensor_data: Unvalidated) -> Result<u32, Error<I>>
 where
     I: embedded_hal::i2c::Error,
@@ -268,11 +322,28 @@ where
     Ok(u32::from_be_bytes(bytes))
 }
 
-/// Calculate the CRC8/NRSC5 for the given bytes.
+/// Calculate the CRC8 for the given bytes.
+///
+/// Should the bytes passed be the two data bytes with their CRC, the result
+/// should be 0. If instead only the two data bytes are passed, the result
+/// should be the same as the CRC provided by the sensor.
+///
+/// # Example usage
+///
+/// ```rust,ignore
+/// // Example taken from the datasheet.
+/// assert_eq!(crc8(&[0xBE, 0xEF]), 0x92);
+/// assert_eq!(crc8(&[0xBE, 0xEF, 0x92]), 0);
+/// ````
 ///
 /// This is pre-set with the polynomial 0x31 and the initial value of 0xFF,
-/// with no reflection or final XOR, as specified at 4.4 (p11) in the SHT4x
-/// datasheet.
+/// with no reflection or final XOR, as specified in section 4.4 of the
+/// [datasheet].
+///
+/// This CRC appears to be also known as the "NRSC-5" CRC8, but this is not
+/// a term Sensirion use in their documentation.
+///
+/// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
 #[must_use]
 pub(crate) fn crc8(bytes: &[u8]) -> u8 {
     const fn top_bit_set(b: u8) -> bool {

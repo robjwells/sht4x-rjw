@@ -4,7 +4,7 @@ An [`embedded-hal`], [`no_std`] driver for the [Sensirion SHT4x series][sht4x]
 of temperature and humidity sensors.
 
 This crate provides both blocking and async drivers for the SHT4x, with CRC
-verification of all read data, and easy access to measurements in celsius (°C),
+validation of all read data, and easy access to measurements in celsius (°C),
 fahrenheit (°F), and percent relative humidity (%RH), all as `f32`.
 
 The SHT4x communicates over I2C, exposing temperature and humidity measurement

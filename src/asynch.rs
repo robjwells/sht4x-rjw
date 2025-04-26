@@ -1,3 +1,4 @@
+//! Async driver for SHT40
 use embedded_hal_async::delay::DelayNs;
 use embedded_hal_async::i2c::{I2c, SevenBitAddress};
 
@@ -64,7 +65,7 @@ pub struct SHT40<I: I2c> {
     /// subsequent I2C interactions.
     pub address: SevenBitAddress,
 
-    /// Default reading and delay modes used by [SHT40::measure()].
+    /// Default reading and delay modes used by [`SHT40::measure()`].
     pub config: Config,
 }
 
@@ -107,7 +108,7 @@ impl<I: I2c> SHT40<I> {
     /// # Errors
     ///
     /// An error may be returned if the serial number data bytes fail
-    /// to pass CRC verification, or if a problem occurs with the I2C
+    /// to pass CRC validation, or if a problem occurs with the I2C
     /// interface.
     pub async fn serial_number(&mut self) -> Result<u32, Error<I::Error>> {
         // Note that the SHT4x I2C interface requires a STOP condition after
@@ -138,7 +139,7 @@ impl<I: I2c> SHT40<I> {
     /// Measure temperature and humidity with the settings provided upon
     /// construction of the sensor struct.
     ///
-    /// This method is a convenience wrapper around [SHT40::measure_with_settings()]
+    /// This method is a convenience wrapper around [`SHT40::measure_with_settings()`]
     /// so that it is not necessary to specify the reading and delay mode
     /// each time you wish to obtain a measurement from the sensor.
     pub async fn measure(&mut self, delay: impl DelayNs) -> Result<Measurement, Error<I::Error>> {
@@ -151,7 +152,7 @@ impl<I: I2c> SHT40<I> {
     /// # Errors
     ///
     /// An error may be returned if either the temperature or humidity
-    /// data bytes fail to pass CRC verification, or if a problem occurs
+    /// data bytes fail to pass CRC validation, or if a problem occurs
     /// with the I2C interface.
     ///
     /// # Timing

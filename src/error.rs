@@ -1,16 +1,25 @@
+/// Error wrapper for all driver methods that interact with the sensor.
 #[derive(Debug)]
 pub enum Error<I2cError>
 where
     I2cError: embedded_hal::i2c::Error,
 {
+    /// A byte pair had an incorrect CRC.
     CrcValidationFailed(CrcFailureReason),
+
+    /// An error was returned from the underlying I2C interface.
     I2c(I2cError),
 }
 
+/// Describes which byte pair had an incorrect CRC.
 pub enum CrcFailureReason {
+    /// The first two bytes of the four-byte serial number.
     SerialNumberFirstPair,
+    /// The second two bytes of the four-byte serial number.
     SerialNumberSecondPair,
+    /// The temperature reading bytes.
     TemperatureBytes,
+    /// The humidity reading bytes.
     HumidityBytes,
 }
 
@@ -31,6 +40,7 @@ impl core::fmt::Display for CrcFailureReason {
     }
 }
 
+/// Enable `?` to convert embedded-hal I2C errors into our `Error`.
 impl<I2cError> From<I2cError> for Error<I2cError>
 where
     I2cError: embedded_hal::i2c::Error,
