@@ -1,5 +1,4 @@
 //! Functionality used by both blocking and async drivers
-use crate::crc::validate_crc;
 use crate::error::{CrcFailureReason, Error};
 
 pub(crate) const READ_SERIAL_NUMBER_COMMAND: u8 = 0x89;
@@ -8,6 +7,25 @@ pub(crate) const SOFT_RESET_COMMAND: u8 = 0x94;
 /// Internal wrapper around the 6 bytes read from the sensor, so that the
 /// 4 data bytes may only be accessed after passing CRC validation.
 pub(crate) struct Unvalidated([u8; 6]);
+
+/// Wrap the checking of a CRC, and logging and returning any error
+macro_rules! check_crc {
+    (data: [$d0:ident, $d1:ident], received_crc: $rc:ident, failure_meaning: $f:ident) => {
+        if let Err(crc) = crate::crc::validate_crc([$d0, $d1, $rc]) {
+            #[cfg(feature = "defmt")]
+            defmt::error!(
+                "CRC failed: expected 0 for {=[u8; 3]:#02X}, calculated {=u8:#02X}",
+                [$d0, $d1, $rc],
+                crc,
+            );
+            return Err(Error::CrcValidationFailed {
+                reason: $f,
+                received_bytes: [$d0, $d1, $rc],
+                calculated_crc: crc,
+            });
+        }
+    };
+}
 
 impl Unvalidated {
     pub(crate) fn new(bytes: [u8; 6]) -> Self {
@@ -35,12 +53,8 @@ impl Unvalidated {
         I: embedded_hal::i2c::Error,
     {
         let [d0, d1, c0, d2, d3, c1] = self.0;
-        if validate_crc([d0, d1, c0]).is_err() {
-            return Err(Error::CrcValidationFailed(first_byte_pair_meaning));
-        }
-        if validate_crc([d2, d3, c1]).is_err() {
-            return Err(Error::CrcValidationFailed(second_byte_pair_meaning));
-        }
+        check_crc!(data: [d0, d1], received_crc: c0, failure_meaning: first_byte_pair_meaning);
+        check_crc!(data: [d2, d3], received_crc: c1, failure_meaning: second_byte_pair_meaning);
         Ok([d0, d1, d2, d3])
     }
 }

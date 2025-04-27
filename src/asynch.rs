@@ -2,7 +2,7 @@
 use embedded_hal_async::delay::DelayNs;
 use embedded_hal_async::i2c::{I2c, SevenBitAddress};
 
-use crate::common::{Config, Measurement, DelayMode, ReadingMode, Unvalidated};
+use crate::common::{Config, DelayMode, Measurement, ReadingMode, Unvalidated};
 use crate::common::{
     READ_SERIAL_NUMBER_COMMAND, SOFT_RESET_COMMAND, serial_number_from_read_bytes,
 };
@@ -119,10 +119,21 @@ impl<I: I2c> SHT40<I> {
         //
         // This is the case even here, where no delay is needed for the
         // sensor to make the data available for reading.
+        #[cfg(feature = "defmt")]
+        defmt::debug!("Reading serial of sensor at {=u8:#02X}", self.address);
+
         self.i2c
             .write(self.address, &[READ_SERIAL_NUMBER_COMMAND])
             .await?;
         self.i2c.read(self.address, &mut self.read_buffer).await?;
+
+        #[cfg(feature = "defmt")]
+        defmt::debug!(
+            "Bytes from sensor {=u8:#02X}: {=[u8; 6]:#02X}",
+            self.address,
+            self.read_buffer
+        );
+
         serial_number_from_read_bytes(Unvalidated::new(self.read_buffer))
     }
 
@@ -132,6 +143,9 @@ impl<I: I2c> SHT40<I> {
     ///
     /// An error may be returned if there is a problem with the I2C interface.
     pub async fn soft_reset(&mut self, mut delay: impl DelayNs) -> Result<(), Error<I::Error>> {
+        #[cfg(feature = "defmt")]
+        defmt::debug!("Issuing soft reset to sensor at {=u8:#02X}", self.address);
+
         self.i2c.write(self.address, &[SOFT_RESET_COMMAND]).await?;
         delay.delay_ms(1).await;
         Ok(())
@@ -171,9 +185,26 @@ impl<I: I2c> SHT40<I> {
         let command = reading_mode.command_byte();
         let us = delay_mode.us_for_reading_mode(reading_mode);
 
+        #[cfg(feature = "defmt")]
+        defmt::debug!(
+            "Measuring from sensor {=u8:#02X}: {} ({=u8:#02X}), {} ({=u32} us)",
+            self.address,
+            reading_mode,
+            command,
+            delay_mode,
+            us
+        );
+
         self.i2c.write(self.address, &[command]).await?;
         delay.delay_us(us).await;
         self.i2c.read(self.address, &mut self.read_buffer).await?;
+
+        #[cfg(feature = "defmt")]
+        defmt::debug!(
+            "Bytes from sensor {=u8:#02X}: {=[u8; 6]:#02X}",
+            self.address,
+            self.read_buffer
+        );
 
         Measurement::from_read_bytes(Unvalidated::new(self.read_buffer))
     }

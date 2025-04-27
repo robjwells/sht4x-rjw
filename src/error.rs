@@ -6,7 +6,11 @@ where
     I2cError: embedded_hal::i2c::Error,
 {
     /// A byte pair had an incorrect CRC.
-    CrcValidationFailed(CrcFailureReason),
+    CrcValidationFailed {
+        reason: CrcFailureReason,
+        received_bytes: [u8; 3],
+        calculated_crc: u8,
+    },
 
     /// An error was returned from the underlying I2C interface.
     I2c(I2cError),
@@ -69,8 +73,16 @@ where
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Error::CrcValidationFailed(location) => {
-                write!(f, "CRC validation failed for {location}")
+            Error::CrcValidationFailed {
+                reason,
+                received_bytes,
+                calculated_crc,
+            } => {
+                write!(
+                    f,
+                    "CRC validation failed for {reason} (received bytes {:02X?}, expected CRC to be 0, calculated {:02X})",
+                    received_bytes, calculated_crc
+                )
             }
             Error::I2c(e) => write!(f, "Received I2C error: {:?}", e),
         }
