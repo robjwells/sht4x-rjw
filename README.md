@@ -132,10 +132,10 @@ You may prefer to use the following drivers for the SHT4x:
 - [`sht4x`](https://github.com/sirhcel/sht4x)
 - [`sensor-temp-humidity-sht40`](https://github.com/lc525/sensor-temp-humidity-sht40-rs)
 
-# Licence
+# License
 
-The `sht4x_rjw` crate is licensed under the [Apache License, Version 2.0], or
-the [MIT License], at your option.
+The `sht4x_rjw` crate is copyright 2025 Rob Wells, and is licensed under the
+[Apache License, Version 2.0], or the [MIT License], at your option.
 
 [`embedded-hal`]: https://docs.rs/embedded-hal/latest/embedded_hal/
 [`embedded-hal-async`]: https://docs.rs/embedded-hal-async/latest/embedded_hal_async/
