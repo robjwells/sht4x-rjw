@@ -48,6 +48,7 @@ use crate::error::Error;
 /// #   Ok(())
 /// # }
 /// ```
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SHT40<I: I2c> {
     i2c: I,
 

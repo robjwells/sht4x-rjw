@@ -1,5 +1,6 @@
 /// Error wrapper for all driver methods that interact with the sensor.
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Error<I2cError>
 where
     I2cError: embedded_hal::i2c::Error,
@@ -30,6 +31,18 @@ impl core::fmt::Debug for CrcFailureReason {
             Self::SerialNumberSecondPair => write!(f, "second two bytes of serial number"),
             Self::TemperatureBytes => write!(f, "temperature bytes"),
             Self::HumidityBytes => write!(f, "humidity bytes"),
+        }
+    }
+}
+
+#[cfg(feature = "defmt")]
+impl defmt::Format for CrcFailureReason {
+    fn format(&self, fmt: defmt::Formatter) {
+        match self {
+            Self::SerialNumberFirstPair => defmt::write!(fmt, "first two bytes of serial number"),
+            Self::SerialNumberSecondPair => defmt::write!(fmt, "second two bytes of serial number"),
+            Self::TemperatureBytes => defmt::write!(fmt, "temperature bytes"),
+            Self::HumidityBytes => defmt::write!(fmt, "humidity bytes"),
         }
     }
 }

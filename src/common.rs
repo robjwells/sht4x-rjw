@@ -55,6 +55,7 @@ impl Unvalidated {
 ///
 /// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
 #[derive(Clone, Copy)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum HeaterPower {
     /// 200mW nominal
     ///
@@ -85,6 +86,7 @@ pub enum HeaterPower {
 ///
 /// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
 #[derive(Clone, Copy)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum HeaterDuration {
     /// 1 second
     Long,
@@ -121,6 +123,7 @@ pub enum HeaterDuration {
 ///
 /// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
 #[derive(Clone, Copy)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ReadingMode {
     /// High repeatability: 3σ of 0.04°C and 0.08%RH.
     HighPrecision,
@@ -176,6 +179,7 @@ impl ReadingMode {
 ///
 /// [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
 #[derive(Clone, Copy)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum DelayMode {
     /// Use the typical delay times before attempting to read.
     ///
@@ -234,6 +238,7 @@ impl DelayMode {
 ///
 /// [`SHT40::measure()`]: crate::blocking::SHT40::measure
 /// [`SHT40::measure_with_settings()`]: crate::blocking::SHT40::measure
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Config {
     /// Default measurement precision or heater usage.
     pub reading_mode: ReadingMode,
@@ -263,6 +268,7 @@ impl Default for Config {
 ///
 /// [`sht40_rjw::conversions`]: crate::conversions
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Measurement {
     /// The unconverted temperature value received from the sensor.
     raw_temp: u16,
