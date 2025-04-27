@@ -57,6 +57,9 @@ pub mod fixed_point {
     /// The output value is clamped to the range `0.0..=100.0`, as suggested
     /// in the first note in section 4.6 of the datasheet. ("Non-physical"
     /// humidity values may be produced "at the measurement boundaries".)
+    ///
+    /// The result is still an [`I16F16`] despite always being a positive
+    /// number for consistency with the other conversion functions.
     pub fn humidity_reading_to_percent_rh(reading: u16) -> I16F16 {
         // Convert u16 reading into a fraction 0..=1
         let fraction: U16F16 = U16F16::from_num(reading) / U16F16::from_num(u16::MAX);

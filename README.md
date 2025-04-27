@@ -15,8 +15,8 @@ Optional features include:
   and the [`asynch::SHT4x`] driver struct. The blocking and async drivers are
   otherwise identical.
 - **[`defmt`]** support through the `defmt` feature flag.
-- **Fixed-point** conversions (instead of `f32` floating-point) through the
-  `fixed` feature flag and the [`fixed`] crate.
+- **Fixed-point** conversions through the `fixed` feature flag and the
+  [`fixed`] crate.
 
 You can remove the blocking driver by passing `--no-default-features` to
 `cargo add`, or adding `default-features = false` to the dependency spec in
