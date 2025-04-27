@@ -1,4 +1,4 @@
-//! Async driver for SHT40
+//! Async driver for SHT4x
 use embedded_hal_async::delay::DelayNs;
 use embedded_hal_async::i2c::{I2c, SevenBitAddress};
 
@@ -8,9 +8,9 @@ use crate::common::{
 };
 use crate::error::Error;
 
-/// Async SHT40 sensor interface
+/// Async SHT4x sensor interface
 ///
-/// With this you can read the temperature and humidity from the SHT40,
+/// With this you can read the temperature and humidity from the SHT4x,
 /// read its 4-byte serial number, and perform a soft reset of the sensor.
 ///
 /// Note that the driver must be declared as `mut` as I2C reads and writes
@@ -34,13 +34,13 @@ use crate::error::Error;
 /// #     Transaction::read(0x44, vec![0x12, 0x34, 0x37, 0x56, 0x78, 0x7D])
 /// #   ];
 /// #   let i2c = Mock::new(&expectations);
-/// use sht40_rjw::asynch::SHT40;
-/// let mut sensor = SHT40::new(i2c, Default::default());
+/// use sht4x_rjw::asynch::SHT4x;
+/// let mut sensor = SHT4x::new(i2c, Default::default());
 /// let serial_number = sensor.serial_number().await?;
 /// let measurement = sensor.measure(&mut delay).await?;
 ///
 /// defmt::info!(
-///     "SHT40 sensor with serial {}, currently: {}°C, {}%RH",
+///     "SHT4x sensor with serial {}, currently: {}°C, {}%RH",
 ///     serial_number,
 ///     measurement.celsius(),
 ///     measurement.humidity()
@@ -50,27 +50,27 @@ use crate::error::Error;
 /// # }
 /// ```
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct SHT40<I: I2c> {
+pub struct SHT4x<I: I2c> {
     i2c: I,
 
-    /// Internal buffer to hold the response from the SHT40, which
+    /// Internal buffer to hold the response from the SHT4x, which
     /// is always 6 bytes: `[data, data, CRC, data, data, CRC]`
     ///
     /// This buffer is reused for each read from the sensor.
     read_buffer: [u8; 6],
 
-    /// I2C address of your SHT40 sensor.
+    /// I2C address of your SHT4x sensor.
     ///
     /// If your sensor is not at all the default address (`0x44`), write to
     /// this field after instantiation. The new address will affect all
     /// subsequent I2C interactions.
     pub address: SevenBitAddress,
 
-    /// Default reading and delay modes used by [`SHT40::measure()`].
+    /// Default reading and delay modes used by [`SHT4x::measure()`].
     pub config: Config,
 }
 
-impl<I: I2c> SHT40<I> {
+impl<I: I2c> SHT4x<I> {
     /// Create a new sensor with the default address of `0x44`.
     ///
     /// Example usage of configuring the driver to use the heater on
@@ -79,9 +79,9 @@ impl<I: I2c> SHT40<I> {
     /// ```rust
     /// # use embedded_hal_mock::eh1::i2c::{Mock, Transaction};
     /// # let i2c = Mock::new(&[]);
-    /// use sht40_rjw::asynch::SHT40;
-    /// use sht40_rjw::common::*;
-    /// let sensor = SHT40::new(i2c, Config {
+    /// use sht4x_rjw::asynch::SHT4x;
+    /// use sht4x_rjw::common::*;
+    /// let sensor = SHT4x::new(i2c, Config {
     ///     reading_mode: ReadingMode::HighPrecisionWithHeater(
     ///         HeaterPower::High,
     ///         HeaterDuration::Long,
@@ -154,7 +154,7 @@ impl<I: I2c> SHT40<I> {
     /// Measure temperature and humidity with the settings provided upon
     /// construction of the sensor struct.
     ///
-    /// This method is a convenience wrapper around [`SHT40::measure_with_settings()`]
+    /// This method is a convenience wrapper around [`SHT4x::measure_with_settings()`]
     /// so that it is not necessary to specify the reading and delay mode
     /// each time you wish to obtain a measurement from the sensor.
     pub async fn measure(&mut self, delay: impl DelayNs) -> Result<Measurement, Error<I::Error>> {

@@ -245,16 +245,16 @@ impl DelayMode {
 /// Default settings for the sensor's reading and delay modes.
 ///
 /// The settings provided in the `Config` when the sensor struct is created
-/// are used for the [`SHT40::measure()`] method, which only requires the
+/// are used for the [`SHT4x::measure()`] method, which only requires the
 /// user to provide a delay implementation.
 ///
 /// These settings may be changed at any time by mutating the `config` field
-/// of the sensor struct. Otherwise, the [`SHT40::measure_with_settings()`]
+/// of the sensor struct. Otherwise, the [`SHT4x::measure_with_settings()`]
 /// method allows the user to specify the reading and delay modes on each
 /// call.
 ///
-/// [`SHT40::measure()`]: crate::blocking::SHT40::measure
-/// [`SHT40::measure_with_settings()`]: crate::blocking::SHT40::measure
+/// [`SHT4x::measure()`]: crate::blocking::SHT4x::measure
+/// [`SHT4x::measure_with_settings()`]: crate::blocking::SHT4x::measure
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Config {
     /// Default measurement precision or heater usage.
@@ -277,13 +277,13 @@ impl Default for Config {
 ///
 /// Users should use this struct's methods to convert the raw readings into
 /// recognisable units. (These methods are just wrappers around the functions
-/// provided in [`sht40_rjw::conversions`]).
+/// provided in [`sht4x_rjw::conversions`]).
 ///
 /// The "raw" values are also available via methods. They have been
 /// reconstructed as `u16`s from the bytes read from the sensor, after
 /// passing CRC validation, but have otherwise not been converted.
 ///
-/// [`sht40_rjw::conversions`]: crate::conversions
+/// [`sht4x_rjw::conversions`]: crate::conversions
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Measurement {

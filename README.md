@@ -7,12 +7,12 @@ support. The driver implements all features described in section 4.5 of the
 
 # Features
 
-By default, this crate contains a blocking driver, [`blocking::SHT40`].
+By default, this crate contains a blocking driver, [`blocking::SHT4x`].
 
 Optional features include:
 
 - **Async** support via [`embedded-hal-async`]. Use the `async` feature flag
-  and the [`asynch::SHT40`] driver struct. The blocking and async drivers are
+  and the [`asynch::SHT4x`] driver struct. The blocking and async drivers are
   otherwise identical.
 - **[`defmt`]** support through the `defmt` feature flag.
 - **Fixed-point** conversions (instead of `f32` floating-point) through the
@@ -28,7 +28,7 @@ your `Cargo.toml`.
 
 ```rust
 # use embedded_hal_mock::eh1::i2c::{Mock, Transaction};
-# use sht40_rjw::blocking::SHT40;
+# use sht4x_rjw::blocking::SHT4x;
 # fn main() -> anyhow::Result<()> {
 #   let mut delay = embedded_hal_mock::eh1::delay::NoopDelay::new();
 #   let expectations = [
@@ -42,12 +42,12 @@ your `Cargo.toml`.
 #     Transaction::read(0x44, vec![0x12, 0x34, 0x37, 0x56, 0x78, 0x7D])
 #   ];
 #   let i2c = Mock::new(&expectations);
-let mut sensor = SHT40::new(i2c, Default::default());
+let mut sensor = SHT4x::new(i2c, Default::default());
 let serial_number = sensor.serial_number()?;
 let measurement = sensor.measure(&mut delay)?;
 
 defmt::info!(
-    "SHT40 sensor with serial {}, currently: {}°C, {}%RH",
+    "SHT4x sensor with serial {}, currently: {}°C, {}%RH",
     serial_number,
     measurement.celsius(),
     measurement.humidity()
@@ -60,8 +60,8 @@ defmt::info!(
 # Driver operation
 
 Construct the driver by passing in an [I2C interface] and configuration struct
-(used to set defaults for [`SHT40::measure()`]). You can retrieve the I2C
-interface with [`SHT40::destroy()`].
+(used to set defaults for [`SHT4x::measure()`]). You can retrieve the I2C
+interface with [`SHT4x::destroy()`].
 
 You can choose the type of measurement conducted (varying in repeatability
 and heater use) with [`ReadingMode`]. The default value of [`Config`] is set
@@ -85,8 +85,8 @@ the data read from the sensor, the [`Error`] enum will contain the bytes in
 question (both data bytes and the CRC byte read from the sensor).
 
 [I2C interface]: embedded_hal::i2c::I2c
-[`SHT40::destroy()`]: crate::blocking::SHT40::destroy()
-[`SHT40::measure()`]: crate::blocking::SHT40::measure()
+[`SHT4x::destroy()`]: crate::blocking::SHT4x::destroy()
+[`SHT4x::measure()`]: crate::blocking::SHT4x::measure()
 [`ReadingMode`]: crate::common::ReadingMode
 [`Measurement`]: crate::common::Measurement
 [`conversions`]: crate::conversions
@@ -105,9 +105,9 @@ Should you need to use an address other than `0x44`, instantiate the struct
 as normal and write to its `address` field, as so:
 
 ```rust
-# use sht40_rjw::blocking::SHT40;
+# use sht4x_rjw::blocking::SHT4x;
 # let i2c = embedded_hal_mock::eh1::i2c::Mock::new(&[]);
-let mut sensor = SHT40::new(i2c, Default::default());
+let mut sensor = SHT4x::new(i2c, Default::default());
 sensor.address = 0x46;
 # sensor.destroy().done()
 ```

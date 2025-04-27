@@ -1,5 +1,5 @@
 [package]
-name = "sht40-rjw"
+name = "sht4x-rjw"
 version = "0.1.0"
 edition = "2024"
 

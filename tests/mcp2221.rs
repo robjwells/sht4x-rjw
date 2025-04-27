@@ -1,5 +1,5 @@
 use embedded_hal_mock::eh1::delay::StdSleep;
-use sht40_rjw::blocking::SHT40;
+use sht4x_rjw::blocking::SHT4x;
 
 #[test]
 fn mcp() -> anyhow::Result<()> {
@@ -8,7 +8,7 @@ fn mcp() -> anyhow::Result<()> {
     let di = dev.get_device_info()?;
     println!("{}", di);
 
-    let mut sensor = SHT40::new(dev, Default::default());
+    let mut sensor = SHT4x::new(dev, Default::default());
 
     println!("Serial number: {}", sensor.serial_number()?);
 
