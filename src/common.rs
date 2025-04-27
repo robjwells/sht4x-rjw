@@ -308,6 +308,11 @@ impl Measurement {
         })
     }
 
+    /// Convert the raw humidity reading to percent relative humidity.
+    pub fn humidity(&self) -> f32 {
+        crate::conversions::humidity_reading_to_percent_rh(self.raw_humidity)
+    }
+
     /// Convert the raw temperature reading to celsius.
     pub fn celsius(&self) -> f32 {
         crate::conversions::temperature_reading_to_celsius(self.raw_temp)
@@ -316,11 +321,6 @@ impl Measurement {
     /// Convert the raw temperature reading to fahrenheit.
     pub fn fahrenheit(&self) -> f32 {
         crate::conversions::temperature_reading_to_fahrenheit(self.raw_temp)
-    }
-
-    /// Convert the raw humidity reading to percent relative humidity.
-    pub fn humidity(&self) -> f32 {
-        crate::conversions::humidity_reading_to_percent_rh(self.raw_humidity)
     }
 
     /// The unconverted temperature reading from the sensor as a 16-bit integer.
