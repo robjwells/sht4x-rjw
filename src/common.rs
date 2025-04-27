@@ -334,6 +334,7 @@ impl Measurement {
     }
 }
 
+/// Fixed-point conversion methods.
 #[cfg(feature = "fixed")]
 impl Measurement {
     /// Convert the raw humidity reading to percent relative humidity.
