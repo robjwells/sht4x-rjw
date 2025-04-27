@@ -1,18 +1,30 @@
 # SHT4x embedded-hal driver
 
 An [`embedded-hal`], [`no_std`] driver for the [Sensirion SHT4x series][sht4x]
-of temperature and humidity sensors.
+of I2C temperature and humidity sensors with **blocking** and **async**
+support. The driver implements all features described in section 4.5 of the
+[datasheet].
 
-This crate provides both blocking and async drivers for the SHT4x, with CRC
-validation of all read data, and easy access to measurements in celsius (°C),
-fahrenheit (°F), and percent relative humidity (%RH), all as `f32`.
+# Features
 
-The SHT4x communicates over I2C, exposing temperature and humidity measurement
-at three precision levels, as well as high-precision measurement after
-pre-heating. This crate supports all functions of the SHT4x as listed in
-section 4.5 of the [datasheet].
+By default, this crate contains a blocking driver, [`blocking::SHT40`].
 
-## Example usage
+Optional features include:
+
+- **Async** support via [`embedded-hal-async`]. Use the `async` feature flag
+  and the [`asynch::SHT40`] driver struct. The blocking and async drivers are
+  otherwise identical.
+- **[`defmt`]** support through the `defmt` feature flag.
+- **Fixed-point** conversions (instead of `f32` floating-point) through the
+  `fixed` feature flag and the [`fixed`] crate.
+
+You can remove the blocking driver by passing `--no-default-features` to
+`cargo add`, or adding `default-features = false` to the dependency spec in
+your `Cargo.toml`.
+
+[`defmt`]: https://defmt.ferrous-systems.com/
+
+# Example usage
 
 ```rust
 # use embedded_hal_mock::eh1::i2c::{Mock, Transaction};
@@ -45,48 +57,44 @@ defmt::info!(
 # }
 ```
 
-## Blocking and async
+# Driver operation
 
-A blocking driver, for use with [`embedded-hal`], is available as
-[`blocking::SHT40`]. This is included as a default feature.
+Construct the driver by passing in an [I2C interface] and configuration struct
+(used to set defaults for [`SHT40::measure()`]). You can retrieve the I2C
+interface with [`SHT40::destroy()`].
 
-An async driver, for use with [`embedded-hal-async`], is available as
-[`asynch::SHT40`] (note the extra "h" because of keyword clash). This
-is available after enabling the `async` feature.
+You can choose the type of measurement conducted (varying in repeatability
+and heater use) with [`ReadingMode`]. The default value of [`Config`] is set
+for high-repeatability measurements.
 
-If you are using the async driver, you can remove the blocking driver by
-passing `--no-default-features` to `cargo add`, or disable the default features
-in your `Cargo.toml`, like so:
+When reading measurements from the sensor (or performing a soft reset), pass
+in an implementation of [`embedded_hal::delay::DelayNs`]. (This is done to avoid
+the driver having to take ownership of the delay struct, as it can be less easy
+to share these than I2C interfaces.) The length of the delay is controlled by
+[`DelayMode`].
 
-```toml
-[dependencies]
-sht4x_rjw = { version = "0.1.0", default-features = false, features = ["async"] }
-```
+Temperature and humidity measurements are provided through [`Measurement`],
+which has methods for converting the raw two-byte sensor measurement into
+recognisable units. The raw measurements can also be accessed, and the
+conversion functions are available in the [`conversions`] module.
 
-## Sensor configuration and delay mode
+Data is read from the sensor as two groups of three bytes: two data bytes and
+one CRC byte for error detection. These CRC bytes are always checked before the
+data bytes are made available for conversion. Should an error be detected in
+the data read from the sensor, the [`Error`] enum will contain the bytes in
+question (both data bytes and the CRC byte read from the sensor).
 
-When you create the sensor, it takes a configuration struct, [`common::Config`].
-Here are its default values:
+[I2C interface]: embedded_hal::i2c::I2c
+[`SHT40::destroy()`]: crate::blocking::SHT40::destroy()
+[`SHT40::measure()`]: crate::blocking::SHT40::measure()
+[`ReadingMode`]: crate::common::ReadingMode
+[`Measurement`]: crate::common::Measurement
+[`conversions`]: crate::conversions
+[`Error`]: crate::error::Error
+[`Config`]: crate::common::Config
+[`DelayMode`]: crate::common::DelayMode
 
-```rust
-# use sht40_rjw::common::{Config, ReadingMode, DelayMode};
-Config {
-    reading_mode: ReadingMode::HighPrecision,
-    delay_mode: DelayMode::Typical,
-};
-```
-
-This sets the default measurement mode (high precision, without heating)
-and sets the delay before reading the measurement to the "typical" values
-listed in the datasheet.
-
-**NOTE** that the SHT4x does not respond to reads that occur before the
-requested measurement is ready, which will cause the measurement method to
-fail with an [`i2c::Error`]. If you find that you are encountering NACK errors
-when attempting to measure, try switching to [`DelayMode::Maximum`].
-Please see section 3.2 of the [datasheet] for timings.
-
-## Sensor I2C address
+# Sensor I2C address
 
 The sensor struct uses a default I2C address of `0x44`, as this appears to be
 the most common. However, sensors with part numbers including `-B` and `-C`
@@ -106,41 +114,37 @@ sensor.address = 0x46;
 
 10-bit I2C addresses are not supported.
 
-## I have an SHT40, what is this SHT4x?
+# Sensor variant support
 
-SHT4x refers to the whole series of sensors, all of which work in the same
-way over I2C. So this crate _should_ work with whichever variant you have,
-though currently it has only been tested with the SHT40.
+There are (as of this writing) four parts in the SHT4x line: the [SHT40], [SHT41],
+[SHT43] and [SHT45]. There is also the SHT4x**A** line of automotive parts. All of
+these sensors share the same I2C interface, so this library _should_ work with
+all of them, though at the moment it has only been tested with the SHT40.
 
-The SHT40 is the least accurate of the series, the SHT45 the most accurate, and
-the SHT41 between the two. The SHT43 meanwhile is subject to particular
-calibration and accreditation to an ISO standard. See section 2 of the
-[datasheet] for details.
+**Note** that there appear to be some differences in the characteristics of the
+automotive parts (slower timings, for instance) which are not accounted for at
+present. If this affects you please open an issue.
 
-There is also an SHT4x**A**, which is intended for automotive usage. This
-appears to operate in the same way, with a caveat that the listed heater power
-is reduced at lower supply voltages. Please see the [SHT4x**A**
-datasheet][sht4xa].
-
-## Similar crates
+# Similar crates
 
 You may prefer to use the following drivers for the SHT4x:
 
 - [`sht4x`](https://github.com/sirhcel/sht4x)
 - [`sensor-temp-humidity-sht40`](https://github.com/lc525/sensor-temp-humidity-sht40-rs)
 
-## Licence
+# Licence
 
 The `sht4x_rjw` crate is licensed under the [Apache License, Version 2.0], or
 the [MIT License], at your option.
 
 [`embedded-hal`]: https://docs.rs/embedded-hal/latest/embedded_hal/
+[`embedded-hal-async`]: https://docs.rs/embedded-hal-async/latest/embedded_hal_async/
 [`no_std`]: https://doc.rust-lang.org/reference/names/preludes.html#the-no_std-attribute
 [sht4x]: https://developer.sensirion.com/product-support/sht4x-humidity-and-temperature-sensor
 [datasheet]: https://sensirion.com/media/documents/33FD6951/67EB9032/HT_DS_Datasheet_SHT4x_5.pdf
-[sht4xa]: https://sensirion.com/media/documents/C43ACD8C/67BD838A/HT_DS_Datasheet_SHT4xA_3.pdf
-[`embedded-hal-async`]: https://docs.rs/embedded-hal-async/latest/embedded_hal_async/
-[`i2c::Error`]: embedded_hal::i2c::Error
-[`DelayMode::Maximum`]: crate::common::DelayMode::Maximum
+[SHT40]: https://sensirion.com/products/catalog/SHT40
+[SHT41]: https://sensirion.com/products/catalog/SHT41
+[SHT43]: https://sensirion.com/products/catalog/SHT43
+[SHT45]: https://sensirion.com/products/catalog/SHT45
 [Apache License, Version 2.0]: https://opensource.org/license/apache-2-0
 [MIT License]: https://opensource.org/license/mit
