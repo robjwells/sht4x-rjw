@@ -1,4 +1,7 @@
 //! Functionality used by both blocking and async drivers
+#[cfg(feature = "fixed")]
+use fixed::types::I16F16;
+
 use crate::error::{CrcFailureReason, Error};
 
 pub(crate) const READ_SERIAL_NUMBER_COMMAND: u8 = 0x89;
@@ -328,6 +331,24 @@ impl Measurement {
     /// The unconverted humidity reading from the sensor as a 16-bit integer.
     pub fn raw_humidity_reading(&self) -> u16 {
         self.raw_humidity
+    }
+}
+
+#[cfg(feature = "fixed")]
+impl Measurement {
+    /// Convert the raw humidity reading to percent relative humidity.
+    pub fn humidity_fixed_point(&self) -> I16F16 {
+        crate::conversions::fixed_point::humidity_reading_to_percent_rh(self.raw_humidity)
+    }
+
+    /// Convert the raw temperature reading to celsius.
+    pub fn celsius_fixed_point(&self) -> I16F16 {
+        crate::conversions::fixed_point::temperature_reading_to_celsius(self.raw_temp)
+    }
+
+    /// Convert the raw temperature reading to fahrenheit.
+    pub fn fahrenheit_fixed_point(&self) -> I16F16 {
+        crate::conversions::fixed_point::temperature_reading_to_fahrenheit(self.raw_temp)
     }
 }
 
