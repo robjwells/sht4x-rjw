@@ -2,7 +2,7 @@
 name = "sht4x-rjw"
 description = "no-std driver for the Sensirion SHT4x series of temperature and humidity sensors"
 repository = "https://github.com/robjwells/sht4x-rjw"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 keywords = ["driver", "sensor", "sht40", "sensirion", "embedded-hal"]

@@ -7,12 +7,12 @@ of the [datasheet].
 
 ### Features
 
-By default, this crate contains a blocking driver, [`blocking::SHT4x`].
+By default, this crate contains a blocking driver, `blocking::SHT4x`.
 
 Optional features include:
 
 - **Async** support via [`embedded-hal-async`]. Use the `async` feature flag
-  and the [`asynch::SHT4x`] driver struct. The blocking and async drivers are
+  and the `asynch::SHT4x` driver struct. The blocking and async drivers are
   otherwise identical.
 - **[`defmt`]** support through the `defmt` feature flag.
 - **Fixed-point** conversions through the `fixed` feature flag and the
@@ -23,6 +23,7 @@ You can remove the blocking driver by passing `--no-default-features` to
 your `Cargo.toml`.
 
 [`defmt`]: https://defmt.ferrous-systems.com/
+[`fixed`]: https://gitlab.com/tspiteri/fixed
 
 ### Example usage
 
@@ -50,7 +51,7 @@ and heater use) with [`ReadingMode`]. The default value of [`Config`] is set
 for high-repeatability measurements.
 
 When reading measurements from the sensor (or performing a soft reset), pass
-in an implementation of [`embedded_hal::delay::DelayNs`]. (This is done to avoid
+in an implementation of `embedded_hal::delay::DelayNs`. (This is done to avoid
 the driver having to take ownership of the delay struct, as it can be less easy
 to share these than I2C interfaces.) The length of the delay is controlled by
 [`DelayMode`].
