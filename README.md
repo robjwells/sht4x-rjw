@@ -1,11 +1,11 @@
-# SHT4x embedded-hal driver
+## SHT4x temperature and humidity sensor embedded-hal driver
 
-An [`embedded-hal`], [`no_std`] driver for the [Sensirion SHT4x series][sht4x]
-of I2C temperature and humidity sensors with **blocking** and **async**
-support. The driver implements all features described in section 4.5 of the
-[datasheet].
+`sht4x-rjw` is an [`embedded-hal`], [`no_std`] driver for the [Sensirion SHT4x
+series][sht4x] of I2C temperature and humidity sensors with **blocking** and
+**async** support. The driver implements all features described in section 4.5
+of the [datasheet].
 
-# Features
+### Features
 
 By default, this crate contains a blocking driver, [`blocking::SHT4x`].
 
@@ -24,24 +24,9 @@ your `Cargo.toml`.
 
 [`defmt`]: https://defmt.ferrous-systems.com/
 
-# Example usage
+### Example usage
 
 ```rust
-# use embedded_hal_mock::eh1::i2c::{Mock, Transaction};
-# use sht4x_rjw::blocking::SHT4x;
-# fn main() -> anyhow::Result<()> {
-#   let mut delay = embedded_hal_mock::eh1::delay::NoopDelay::new();
-#   let expectations = [
-#     // Request the sensor serial number.
-#     Transaction::write(0x44, vec![0x89]),
-#     // Receive a fake sensor serial number.
-#     Transaction::read(0x44, vec![0x01, 0x02, 0x17, 0x3, 0x4, 0x68]),
-#     // Request a high-precision read.
-#     Transaction::write(0x44, vec![0xFD]),
-#     // Receive a fake temp & humidity measurement.
-#     Transaction::read(0x44, vec![0x12, 0x34, 0x37, 0x56, 0x78, 0x7D])
-#   ];
-#   let i2c = Mock::new(&expectations);
 let mut sensor = SHT4x::new(i2c, Default::default());
 let serial_number = sensor.serial_number()?;
 let measurement = sensor.measure(&mut delay)?;
@@ -52,12 +37,9 @@ defmt::info!(
     measurement.celsius(),
     measurement.humidity()
 );
-#   sensor.destroy().done();    // Call done on the I2C mock.
-#   Ok(())
-# }
 ```
 
-# Driver operation
+### Driver operation
 
 Construct the driver by passing in an [I2C interface] and configuration struct
 (used to set defaults for [`SHT4x::measure()`]). You can retrieve the I2C
@@ -94,7 +76,7 @@ question (both data bytes and the CRC byte read from the sensor).
 [`Config`]: crate::common::Config
 [`DelayMode`]: crate::common::DelayMode
 
-# Sensor I2C address
+### Sensor I2C address
 
 The sensor struct uses a default I2C address of `0x44`, as this appears to be
 the most common. However, sensors with part numbers including `-B` and `-C`
@@ -105,16 +87,13 @@ Should you need to use an address other than `0x44`, instantiate the struct
 as normal and write to its `address` field, as so:
 
 ```rust
-# use sht4x_rjw::blocking::SHT4x;
-# let i2c = embedded_hal_mock::eh1::i2c::Mock::new(&[]);
 let mut sensor = SHT4x::new(i2c, Default::default());
 sensor.address = 0x46;
-# sensor.destroy().done()
 ```
 
 10-bit I2C addresses are not supported.
 
-# Sensor variant support
+### Sensor variant support
 
 There are (as of this writing) four parts in the SHT4x line: the [SHT40], [SHT41],
 [SHT43] and [SHT45]. There is also the SHT4x**A** line of automotive parts. All of
@@ -125,14 +104,14 @@ all of them, though at the moment it has only been tested with the SHT40.
 automotive parts (slower timings, for instance) which are not accounted for at
 present. If this affects you please open an issue.
 
-# Similar crates
+### Similar crates
 
 You may prefer to use the following drivers for the SHT4x:
 
 - [`sht4x`](https://github.com/sirhcel/sht4x)
 - [`sensor-temp-humidity-sht40`](https://github.com/lc525/sensor-temp-humidity-sht40-rs)
 
-# License
+### License
 
 The `sht4x_rjw` crate is copyright 2025 Rob Wells, and is licensed under the
 [Apache License, Version 2.0], or the [MIT License], at your option.
