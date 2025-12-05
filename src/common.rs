@@ -15,12 +15,6 @@ pub(crate) struct Unvalidated([u8; 6]);
 macro_rules! check_crc {
     (data: [$d0:ident, $d1:ident], received_crc: $rc:ident, failure_meaning: $f:ident) => {
         if let Err(crc) = crate::crc::validate_crc([$d0, $d1, $rc]) {
-            #[cfg(feature = "defmt")]
-            defmt::error!(
-                "CRC failed: expected 0 for {=[u8; 3]:#02X}, calculated {=u8:#02X}",
-                [$d0, $d1, $rc],
-                crc,
-            );
             return Err(Error::CrcValidationFailed {
                 reason: $f,
                 received_bytes: [$d0, $d1, $rc],
