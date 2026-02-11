@@ -134,8 +134,8 @@
 //!
 //! ## License
 //!
-//! The `sht4x_rjw` crate is copyright 2025 Rob Wells, and is licensed under the
-//! [Apache License, Version 2.0], or the [MIT License], at your option.
+//! The `sht4x_rjw` crate is copyright 2025 the sht4x_rjw contributors, and is licensed
+//! under the [Apache License, Version 2.0], or the [MIT License], at your option.
 //!
 //! [`embedded-hal`]: https://docs.rs/embedded-hal/latest/embedded_hal/
 //! [`embedded-hal-async`]: https://docs.rs/embedded-hal-async/latest/embedded_hal_async/
